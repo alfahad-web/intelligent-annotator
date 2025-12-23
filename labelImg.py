@@ -9,6 +9,23 @@ import sys
 import webbrowser as wb
 from functools import partial
 
+# Import torch BEFORE PyQt5 to ensure DLLs are loaded in the correct order
+# This prevents DLL initialization failures when ultralytics imports torch later.
+# The diagnostic script (diagnose.py) successfully imports torch because it does
+# so without PyQt5 interference. By importing torch here first, we ensure:
+# 1. Torch DLLs are loaded before PyQt5 DLLs
+# 2. When ultralytics imports torch later, Python reuses the already-loaded module
+# 3. DLL search paths are established before PyQt5 initializes
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except (ImportError, OSError) as e:
+    # If torch import fails, we'll handle it gracefully in yolo_inference
+    # This allows the app to run even if torch/ultralytics is not available
+    TORCH_AVAILABLE = False
+    torch = None
+    # Don't print error here - yolo_inference will handle it with better context
+
 try:
     from PyQt5.QtGui import *
     from PyQt5.QtCore import *
@@ -47,6 +64,7 @@ from libs.create_ml_io import CreateMLReader
 from libs.create_ml_io import JSON_EXT
 from libs.ustr import ustr
 from libs.hashableQListWidgetItem import HashableQListWidgetItem
+from libs.yolo_inference import YOLOInference
 
 __appname__ = 'labelImg'
 
@@ -106,6 +124,10 @@ class MainWindow(QMainWindow, WindowMixin):
         self._no_selection_slot = False
         self._beginner = True
         self.screencast = "https://youtu.be/p0nR2YsCY_U"
+
+        # YOLO auto-annotation
+        self.yolo_inference = None
+        self.auto_annotate_enabled = True
 
         # Load predefined classes to the list
         self.load_predefined_classes(default_prefdef_class_file)
@@ -1090,6 +1112,68 @@ class MainWindow(QMainWindow, WindowMixin):
         for item, shape in self.items_to_shapes.items():
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
+    def auto_annotate_with_yolo(self):
+        """
+        Run YOLO inference on the current image and automatically create annotations.
+        Only runs if auto-annotation is enabled and no existing annotations are present.
+        """
+        if not self.auto_annotate_enabled:
+            return
+        
+        # Don't overwrite existing annotations
+        if self.label_file is not None:
+            return
+        
+        # Ensure image is loaded
+        if self.file_path is None or self.image.isNull():
+            return
+        
+        try:
+            # Initialize YOLO inference if not already done
+            if self.yolo_inference is None:
+                self.yolo_inference = YOLOInference()
+                if not self.yolo_inference.load_model():
+                    # Model loading failed, disable auto-annotation for this session
+                    self.auto_annotate_enabled = False
+                    return
+            
+            # Get image dimensions
+            image_width = self.image.width()
+            image_height = self.image.height()
+            
+            if image_width <= 0 or image_height <= 0:
+                return
+            
+            # Run inference
+            self.status("Running YOLO detection...")
+            detections = self.yolo_inference.run_inference(self.file_path)
+            
+            if detections is None:
+                # Inference failed, but don't disable for future images
+                self.status("YOLO detection failed")
+                return
+            
+            if len(detections) == 0:
+                self.status("No objects detected")
+                return
+            
+            # Convert detections to shapes format
+            shapes = self.yolo_inference.convert_detections_to_shapes(
+                detections, image_width, image_height
+            )
+            
+            if shapes:
+                # Load the predicted shapes as annotations
+                self.load_labels(shapes)
+                self.status("Auto-annotated %d object(s)" % len(shapes))
+            else:
+                self.status("No valid annotations created")
+                
+        except Exception as e:
+            # Handle any errors gracefully
+            print("Error in auto-annotation: %s" % str(e))
+            self.status("Auto-annotation error (check console)")
+
     def load_file(self, file_path=None):
         """Load the specified file, or the last opened file if None."""
         self.reset_state()
@@ -1149,6 +1233,11 @@ class MainWindow(QMainWindow, WindowMixin):
             self.image = image
             self.file_path = unicode_file_path
             self.canvas.load_pixmap(QPixmap.fromImage(image))
+            
+            # Run YOLO auto-annotation if no existing annotations
+            if not self.label_file:
+                self.auto_annotate_with_yolo()
+            
             if self.label_file:
                 self.load_labels(self.label_file.shapes)
             self.set_clean()
