@@ -128,6 +128,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # YOLO auto-annotation
         self.yolo_inference = None
         self.auto_annotate_enabled = True
+        self.custom_yolo_model_path = None  # User-selected model path (not persistent)
 
         # Load predefined classes to the list
         self.load_predefined_classes(default_prefdef_class_file)
@@ -165,7 +166,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.edit_button = QToolButton()
         self.edit_button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
-        # Add some of widgets to list_layout
+        # Add some of widgets to list_layout (box labels section)
         list_layout.addWidget(self.edit_button)
         list_layout.addWidget(self.diffc_button)
         list_layout.addWidget(use_default_label_container)
@@ -189,6 +190,27 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.dock = QDockWidget(get_str('boxLabelText'), self)
         self.dock.setObjectName(get_str('labels'))
+        
+        # Create custom title bar widget with button above the title
+        title_bar_widget = QWidget()
+        title_bar_layout = QVBoxLayout()
+        title_bar_layout.setContentsMargins(0, 0, 0, 0)
+        title_bar_layout.setSpacing(2)
+        
+        # Create button to load YOLO model weights - placed at the very top
+        self.load_yolo_model_button = QPushButton("Load YOLO Model Weights")
+        self.load_yolo_model_button.clicked.connect(self.load_yolo_model_dialog)
+        title_bar_layout.addWidget(self.load_yolo_model_button)
+        
+        # Add the dock widget's default title bar functionality
+        # We'll create a simple label for the title below the button
+        title_label = QLabel(get_str('boxLabelText'))
+        title_label.setStyleSheet("font-weight: bold; padding: 2px;")
+        title_bar_layout.addWidget(title_label)
+        
+        title_bar_widget.setLayout(title_bar_layout)
+        self.dock.setTitleBarWidget(title_bar_widget)
+        
         self.dock.setWidget(label_list_container)
 
         self.file_list_widget = QListWidget()
@@ -1112,6 +1134,75 @@ class MainWindow(QMainWindow, WindowMixin):
         for item, shape in self.items_to_shapes.items():
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
+    def load_yolo_model_dialog(self):
+        """
+        Open a file dialog to select a YOLO model (.pt) file and load it.
+        The model path is not persistent - user needs to reload it each session.
+        """
+        # Determine default directory for file dialog
+        if self.custom_yolo_model_path:
+            default_dir = os.path.dirname(self.custom_yolo_model_path)
+        elif self.last_open_dir:
+            default_dir = self.last_open_dir
+        else:
+            default_dir = '.'
+        
+        # Open file dialog for .pt files
+        filters = "YOLO Model Files (*.pt);;All Files (*.*)"
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            'Load YOLO Model Weights',
+            default_dir,
+            filters
+        )
+        
+        # Convert to string for compatibility (handles QString from PyQt4)
+        file_path = ustr(file_path) if file_path else None
+        
+        if file_path and os.path.exists(file_path):
+            # Validate file extension
+            if not file_path.lower().endswith('.pt'):
+                QMessageBox.warning(
+                    self,
+                    'Invalid File',
+                    'Please select a valid YOLO model file (.pt extension).'
+                )
+                return
+            
+            # Store the custom model path
+            self.custom_yolo_model_path = file_path
+            
+            # Reset yolo_inference to force reload with new model
+            self.yolo_inference = None
+            
+            # Try to load the model to verify it's valid
+            try:
+                temp_inference = YOLOInference(model_path=self.custom_yolo_model_path)
+                if temp_inference.load_model():
+                    self.yolo_inference = temp_inference
+                    model_name = os.path.basename(self.custom_yolo_model_path)
+                    self.status(f"YOLO model loaded: {model_name}")
+                    QMessageBox.information(
+                        self,
+                        'Model Loaded',
+                        f'YOLO model loaded successfully:\n{model_name}\n\nAuto-annotation is now enabled.'
+                    )
+                else:
+                    self.custom_yolo_model_path = None
+                    QMessageBox.warning(
+                        self,
+                        'Model Load Failed',
+                        'Failed to load the YOLO model. Please check if the file is valid.'
+                    )
+            except Exception as e:
+                self.custom_yolo_model_path = None
+                self.yolo_inference = None
+                QMessageBox.critical(
+                    self,
+                    'Error',
+                    f'Error loading YOLO model:\n{str(e)}'
+                )
+
     def auto_annotate_with_yolo(self):
         """
         Run YOLO inference on the current image and automatically create annotations.
@@ -1131,10 +1222,15 @@ class MainWindow(QMainWindow, WindowMixin):
         try:
             # Initialize YOLO inference if not already done
             if self.yolo_inference is None:
-                self.yolo_inference = YOLOInference()
+                # Use custom model path if available, otherwise use default
+                model_path = self.custom_yolo_model_path if self.custom_yolo_model_path else None
+                self.yolo_inference = YOLOInference(model_path=model_path)
                 if not self.yolo_inference.load_model():
                     # Model loading failed, disable auto-annotation for this session
                     self.auto_annotate_enabled = False
+                    if not self.custom_yolo_model_path:
+                        # Only show warning if no custom model was selected
+                        self.status("YOLO model not available. Please load a model using 'Load YOLO Model Weights' button.")
                     return
             
             # Get image dimensions

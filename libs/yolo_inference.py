@@ -71,10 +71,9 @@ class YOLOInference:
             model_path = self.model_path
             
         if model_path is None:
-            # Default path: intelligence/best.pt relative to project root
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            model_path = os.path.join(current_dir, '..', 'intelligence', 'best.pt')
-            model_path = os.path.normpath(model_path)
+            # No default model - user must load via button
+            print("Warning: No YOLO model path provided. Please load a model using 'Load YOLO Model Weights' button.")
+            return False
         
         if not os.path.exists(model_path):
             print(f"Warning: YOLO model file not found at {model_path}. Auto-annotation disabled.")
