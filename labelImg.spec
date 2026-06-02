@@ -12,6 +12,7 @@ block_cipher = None
 datas = [
     ('data', 'data'),
     ('resources', 'resources'),
+    ('intelligence/models', 'intelligence/models'),
 ]
 
 # Collect PyQt5 data files
@@ -84,9 +85,15 @@ else:
         'IPython',
     ]
 
+hiddenimports.extend([
+    'intelligence',
+    'intelligence.paths',
+    'intelligence.yolo_inference',
+])
+
 a = Analysis(
     ['labelImg.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,

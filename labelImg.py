@@ -64,7 +64,8 @@ from libs.create_ml_io import CreateMLReader
 from libs.create_ml_io import JSON_EXT
 from libs.ustr import ustr
 from libs.hashableQListWidgetItem import HashableQListWidgetItem
-from libs.yolo_inference import YOLOInference
+from intelligence.paths import models_dir, resolve_model_path
+from intelligence.yolo_inference import YOLOInference
 
 __appname__ = 'labelImg'
 
@@ -582,6 +583,24 @@ class MainWindow(QMainWindow, WindowMixin):
         # Open Dir if default file
         if self.file_path and os.path.isdir(self.file_path):
             self.open_dir_dialog(dir_path=self.file_path, silent=True)
+
+        self.try_load_default_yolo_model()
+
+    def try_load_default_yolo_model(self):
+        """Load weights from intelligence/models/ if a .pt file is present."""
+        model_path = resolve_model_path()
+        if not model_path:
+            return
+        try:
+            inference = YOLOInference(model_path=model_path)
+            if inference.load_model():
+                self.yolo_inference = inference
+                self.custom_yolo_model_path = model_path
+                self.status(
+                    "YOLO model loaded: %s" % os.path.basename(model_path)
+                )
+        except Exception as e:
+            print("Could not load default YOLO model: %s" % e)
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Control:
@@ -1137,15 +1156,17 @@ class MainWindow(QMainWindow, WindowMixin):
     def load_yolo_model_dialog(self):
         """
         Open a file dialog to select a YOLO model (.pt) file and load it.
-        The model path is not persistent - user needs to reload it each session.
+        Defaults to intelligence/models/. Not persisted across sessions unless
+        a file is placed there (see intelligence/models/README.md).
         """
-        # Determine default directory for file dialog
         if self.custom_yolo_model_path:
             default_dir = os.path.dirname(self.custom_yolo_model_path)
+        elif os.path.isdir(models_dir()):
+            default_dir = models_dir()
         elif self.last_open_dir:
             default_dir = self.last_open_dir
         else:
-            default_dir = '.'
+            default_dir = models_dir()
         
         # Open file dialog for .pt files
         filters = "YOLO Model Files (*.pt);;All Files (*.*)"
@@ -1222,16 +1243,16 @@ class MainWindow(QMainWindow, WindowMixin):
         try:
             # Initialize YOLO inference if not already done
             if self.yolo_inference is None:
-                # Use custom model path if available, otherwise use default
-                model_path = self.custom_yolo_model_path if self.custom_yolo_model_path else None
+                model_path = resolve_model_path(self.custom_yolo_model_path)
                 self.yolo_inference = YOLOInference(model_path=model_path)
                 if not self.yolo_inference.load_model():
-                    # Model loading failed, disable auto-annotation for this session
-                    self.auto_annotate_enabled = False
-                    if not self.custom_yolo_model_path:
-                        # Only show warning if no custom model was selected
-                        self.status("YOLO model not available. Please load a model using 'Load YOLO Model Weights' button.")
+                    if not model_path:
+                        self.status(
+                            "No YOLO model in intelligence/models/. "
+                            "Add model.pt or use 'Load YOLO Model Weights'."
+                        )
                     return
+                self.custom_yolo_model_path = self.yolo_inference.model_path
             
             # Get image dimensions
             image_width = self.image.width()

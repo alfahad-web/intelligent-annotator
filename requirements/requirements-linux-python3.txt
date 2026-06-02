@@ -1,2 +1,4 @@
+# Intelligent Annotator — full runtime (UI + YOLO / intelligence stack)
 pyqt5>=5.15.0
 lxml>=4.9.1
+-r ../intelligence/requirements.txt

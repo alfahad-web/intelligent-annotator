@@ -43,3 +43,6 @@ __pycache__/
 tmp.*
 
 venv/
+
+# YOLO weights (place under intelligence/models/ — see README there)
+intelligence/models/*.pt

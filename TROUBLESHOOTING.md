@@ -49,7 +49,6 @@ If you have Python 3.9 available, it may work better with PyInstaller:
 python3.9 -m venv venv39
 .\venv39\Scripts\Activate.ps1
 pip install -r .\requirements\requirements-linux-python3.txt
-pip install -r .\intelligence\requirements.txt
 pip install pyinstaller
 ```
 

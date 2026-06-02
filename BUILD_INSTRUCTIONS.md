@@ -10,8 +10,8 @@ This guide explains how to build a standalone Windows executable (.exe) for the 
    ```powershell
    .\venv\Scripts\Activate.ps1
    pip install -r .\requirements\requirements-linux-python3.txt
-   pip install -r .\intelligence\requirements.txt
    ```
+   (This includes the intelligence stack via `-r ../intelligence/requirements.txt`.)
 
 ## Step 1: Install PyInstaller
 
@@ -132,7 +132,7 @@ To create a professional installer, you can use:
 When distributing your application:
 1. Test thoroughly on clean Windows systems
 2. Include a README with system requirements
-3. Mention that users need to load YOLO models via the button
+3. Place YOLO weights in `intelligence/models/model.pt` or load via the in-app button
 4. Consider code signing for trust
 5. Provide uninstall instructions if using an installer
 
