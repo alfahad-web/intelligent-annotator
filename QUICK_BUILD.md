@@ -2,12 +2,14 @@
 
 Intelligent Annotator is **labelImg** plus YOLO auto-detection under the **`intelligence/`** package.
 
+Use **`python3.12`** to create the virtual environment (the pinned AI stack does not support Python 3.14+). Install it if needed: `sudo pacman -S python312` (Arch / CachyOS).
+
 ## Dependencies (one install)
 
-From the repo root, after creating a venv:
+From the repo root, with the venv created (see below):
 
 ```bash
-pip install -r requirements/requirements-linux-python3.txt
+venv/bin/python -m pip install -r requirements/requirements-linux-python3.txt
 ```
 
 That file installs **PyQt5 + lxml** and pulls in **`intelligence/requirements.txt`** (Ultralytics, PyTorch, OpenCV, etc.).
@@ -19,7 +21,7 @@ That file installs **PyQt5 + lxml** and pulls in **`intelligence/requirements.tx
 | YOLO weights | `intelligence/models/*.pt` (optional; not in git) |
 | Qt resources | `libs/resources.py` via `make qt5py3` once per clone |
 
-Use **Python 3.10–3.12**. The app runs **without** a `.pt` file (manual labeling only). Auto-detect needs installed requirements **and** a model in `intelligence/models/` or loaded via the UI button.
+The app runs **without** a `.pt` file (manual labeling only). Auto-detect needs installed requirements **and** a model in `intelligence/models/` or loaded via the UI button.
 
 For Windows `.exe` details, see `BUILD_INSTRUCTIONS.md`.
 
@@ -46,32 +48,29 @@ See **`intelligence/models/README.md`**. You can run immediately without a model
 ### Setup
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -U pip
-pip install -r requirements/requirements-linux-python3.txt
+python3.12 -m venv venv
+venv/bin/python -m pip install -U pip
+venv/bin/python -m pip install -r requirements/requirements-linux-python3.txt
 make qt5py3    # skip if libs/resources.py already exists
 ```
 
 ### Start
 
 ```bash
-source venv/bin/activate
-python labelImg.py
+venv/bin/python labelImg.py
 ```
 
 ### One-liner
 
 ```bash
-python3 -m venv venv && . venv/bin/activate && pip install -U pip && pip install -r requirements/requirements-linux-python3.txt && (test -f libs/resources.py || make qt5py3) && python labelImg.py
+python3.12 -m venv venv && venv/bin/python -m pip install -U pip && venv/bin/python -m pip install -r requirements/requirements-linux-python3.txt && (test -f libs/resources.py || make qt5py3) && venv/bin/python labelImg.py
 ```
 
 ### Optional Linux binary
 
 ```bash
-source venv/bin/activate
-pip install pyinstaller
-pyinstaller labelImg.spec
+venv/bin/python -m pip install pyinstaller
+venv/bin/pyinstaller labelImg.spec
 # dist/labelImg
 ```
 
@@ -79,30 +78,31 @@ pyinstaller labelImg.spec
 
 ## Windows — run from source
 
+Use Python 3.12 from [python.org](https://www.python.org/downloads/) or `py -3.12` if the launcher is installed.
+
 ```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -U pip
-pip install -r .\requirements\requirements-linux-python3.txt
+py -3.12 -m venv venv
+.\venv\Scripts\python.exe -m pip install -U pip
+.\venv\Scripts\python.exe -m pip install -r .\requirements\requirements-linux-python3.txt
 pyrcc5 -o libs\resources.py resources.qrc
-python labelImg.py
+.\venv\Scripts\python.exe labelImg.py
 ```
 
 ---
 
 ## Windows — build `.exe`
 
-1. Venv with `pip install -r .\requirements\requirements-linux-python3.txt`
-2. `pip install pyinstaller`
+1. Venv: `py -3.12 -m venv venv`, then `.\venv\Scripts\python.exe -m pip install -r .\requirements\requirements-linux-python3.txt`
+2. `.\venv\Scripts\python.exe -m pip install pyinstaller`
 3. `.\build-windows.bat` or `.\build-windows.ps1`
 4. Output: `dist\labelImg.exe` (5–15 min build)
 
-Manual: `pyinstaller labelImg.spec`
+Manual: `pyinstaller labelImg.spec` (with the venv activated or on `PATH`)
 
 ---
 
 ## Notes
 
-- **`venv/`** is gitignored — create per machine.
+- **`venv/`** is gitignored — always create with `python3.12 -m venv venv` on Linux.
 - **`libs/resources.py`** is gitignored — run `make qt5py3` / `pyrcc5` when missing.
-- **Wayland:** try `export QT_QPA_PLATFORM=wayland` or `xcb` if the window misbehaves.
+- **Wayland:** try `export QT_QPA_PLATFORM=wayland` or `xcb` before starting the app.
