@@ -1,8 +1,8 @@
 # Quick Build Guide
 
-Intelligent Annotator is **labelImg** plus YOLO auto-detection under the **`intelligence/`** package.
+Intelligent Annotator is **labelImg** plus YOLO auto-detection under the `**intelligence/`** package.
 
-Use **`python3.12`** to create the virtual environment (the pinned AI stack does not support Python 3.14+). Install it if needed: `sudo pacman -S python312` (Arch / CachyOS).
+Use `**python3.12**` to create the virtual environment (the pinned AI stack does not support Python 3.14+). Install it if needed: `sudo pacman -S python312` (Arch / CachyOS).
 
 ## Dependencies (one install)
 
@@ -12,14 +12,16 @@ From the repo root, with the venv created (see below):
 venv/bin/python -m pip install -r requirements/requirements-linux-python3.txt
 ```
 
-That file installs **PyQt5 + lxml** and pulls in **`intelligence/requirements.txt`** (Ultralytics, PyTorch, OpenCV, etc.).
+That file installs **PyQt5 + lxml** and pulls in `**intelligence/requirements.txt`** (Ultralytics, PyTorch, OpenCV, etc.).
 
-| Piece | Location |
-|--------|----------|
-| UI + labeling | `requirements/requirements-linux-python3.txt` |
-| AI stack | `intelligence/requirements.txt` (included via `-r`) |
-| YOLO weights | `intelligence/models/*.pt` (optional; not in git) |
-| Qt resources | `libs/resources.py` via `make qt5py3` once per clone |
+
+| Piece         | Location                                             |
+| ------------- | ---------------------------------------------------- |
+| UI + labeling | `requirements/requirements-linux-python3.txt`        |
+| AI stack      | `intelligence/requirements.txt` (included via `-r`)  |
+| YOLO weights  | `intelligence/models/*.pt` (optional; not in git)    |
+| Qt resources  | `libs/resources.py` via `make qt5py3` once per clone |
+
 
 The app runs **without** a `.pt` file (manual labeling only). Auto-detect needs installed requirements **and** a model in `intelligence/models/` or loaded via the UI button.
 
@@ -29,12 +31,12 @@ For Windows `.exe` details, see `BUILD_INSTRUCTIONS.md`.
 
 ## YOLO model placement
 
-Put trained weights in **`intelligence/models/`**:
+Put trained weights in `**intelligence/models/`**:
 
-- Preferred name: **`model.pt`**
-- Or any other **`*.pt`** (first match by name if `model.pt` is missing)
+- Preferred name: `**model.pt**`
+- Or any other `***.pt**` (first match by name if `model.pt` is missing)
 
-See **`intelligence/models/README.md`**. You can run immediately without a model; auto-annotation is skipped until weights exist or you use **Load YOLO Model Weights**.
+See `**intelligence/models/README.md**`. You can run immediately without a model; auto-annotation is skipped until weights exist or you use **Load YOLO Model Weights**.
 
 ---
 
@@ -103,6 +105,7 @@ Manual: `pyinstaller labelImg.spec` (with the venv activated or on `PATH`)
 
 ## Notes
 
-- **`venv/`** is gitignored — always create with `python3.12 -m venv venv` on Linux.
-- **`libs/resources.py`** is gitignored — run `make qt5py3` / `pyrcc5` when missing.
+- `**venv/**` is gitignored — always create with `python3.12 -m venv venv` on Linux.
+- `**libs/resources.py**` is gitignored — run `make qt5py3` / `pyrcc5` when missing.
 - **Wayland:** try `export QT_QPA_PLATFORM=wayland` or `xcb` before starting the app.
+
